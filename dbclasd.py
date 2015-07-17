@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-DESCRIPTION: Lorem ipsum dolor sit amet
+DESCRIPTION: Python implementation of the DBCLASD algorithm: a non-parametric clustering algorithm
 
-@copyright: Copyright 2014 Deutsches Forschungszentrum fuer Kuenstliche
+@copyright: 2015 - Deutsches Forschungszentrum fuer Kuenstliche
             Intelligenz GmbH or its licensors, as applicable.
 @author: Sebastian Palacio
 """
@@ -23,53 +23,8 @@ def retrieve_neighborhood(cluster, pt):
     :param pt: point
     :return:list of points
     """
-    area =
+    area = 0
 
-
-def gtcheck(pts, gt):
-    if len(pts) != len(gt):
-        return False
-    for p in pts:
-        if not ((p == gt).sum(axis=-1) == p.size).any():
-            return False
-
-    return True
-
-
-def eval_noise(pts, noise):
-    gt = []
-    af_tolerance = 0
-    kl_tolerance = 0
-    af_end = False
-    kl_end = False
-    for i in range(len(noise)):
-        noise_data = np.vstack((X, XN[:i]))
-        af = AffinityPropagation(preference=-50).fit(noise_data)
-        af_cb = np.round(af.cluster_centers_)
-        kl, kl_cb = kless_clustering(noise_data)
-        kl_cb = np.round(kl_cb)
-
-        if i == 0:
-            gt = af_cb
-
-        if not af_end and gtcheck(af_cb, gt):
-            af_tolerance += 1
-        else:
-            af_end = True
-            print af_cb, '\nAF FAILED'
-            break
-        if not kl_end and gtcheck(kl_cb, gt):
-            kl_tolerance += 1
-        else:
-            kl_end = True
-            break
-
-        print 'AF: %d - KL: %d' % (af_tolerance, kl_tolerance)
-
-        if af_end and kl_end:
-            break
-    print 'AF: %d - KL: %d' % (af_tolerance, kl_tolerance)
-    return af_tolerance, kl_tolerance
 
 def dbclasd(pts):
     """
