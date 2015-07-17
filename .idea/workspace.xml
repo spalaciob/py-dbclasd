@@ -29,9 +29,11 @@
       <file leaf-file-name="dbclasd.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/dbclasd.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.47854078" vertical-offset="40" max-vertical-offset="1188">
-              <caret line="32" column="17" selection-start-line="32" selection-start-column="17" selection-end-line="32" selection-end-column="17" />
-              <folding />
+            <state vertical-scroll-proportion="0.56008583" vertical-offset="0" max-vertical-offset="1962">
+              <caret line="29" column="42" selection-start-line="29" selection-start-column="42" selection-end-line="29" selection-end-column="42" />
+              <folding>
+                <element signature="e#295#305#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -163,9 +165,11 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/dbclasd.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.47854078" vertical-offset="40" max-vertical-offset="1188">
-          <caret line="32" column="17" selection-start-line="32" selection-start-column="17" selection-end-line="32" selection-end-column="17" />
-          <folding />
+        <state vertical-scroll-proportion="0.56008583" vertical-offset="0" max-vertical-offset="1962">
+          <caret line="29" column="42" selection-start-line="29" selection-start-column="42" selection-end-line="29" selection-end-column="42" />
+          <folding>
+            <element signature="e#295#305#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
