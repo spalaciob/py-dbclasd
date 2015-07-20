@@ -77,7 +77,8 @@ def update_candidates(cluster, pts):
     :param pts:
     :return:
     """
-    pass
+    for c_pt in cluster:
+        if pt not in
 
 
 def dbclasd(pts):
@@ -88,7 +89,7 @@ def dbclasd(pts):
     :return: clusters (not sure yet)
     """
     assigned_cands = np.zeros(len(pts)) - 1
-    cands = []  # Candidates
+    candidates = []  # Candidates
     unsuccessful_cands = []
     proccessed_pts = []
     nnfinder = NearestNeighbors(30, algorithm='ball_tree', p=2).fit(pts)
@@ -98,7 +99,22 @@ def dbclasd(pts):
             new_clust_idxs = new_clust_idxs.flatten()
             new_clust_dists = new_clust_dists.flatten()
             for clust_pt_idx in new_clust_idxs:
-                answers = retrieve_neighborhood(pts[new_clust_idxs], nnfinder)
+                local_answer_idxs = retrieve_neighborhood(pts[new_clust_idxs], nnfinder)
+                answer_idxs = new_clust_dists[local_answer_idxs]
+
+                # Update candidates
+                for c_idx in answer_idxs:
+                    if c_idx not in proccessed_pts:
+                        candidates.append(c_idx)
+                        proccessed_pts.append(c_idx)
+            # Expand Cluster
+            change = True
+            while change:
+                change = False
+                while len(candidates) > 0:
+                    new_clust_idxs.append(candidates.pop(0))
+                    
+
 
 
 
