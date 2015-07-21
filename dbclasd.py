@@ -15,7 +15,22 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import chisquare as sci_chisquare
 from matplotlib import pyplot as plt
-from sptools.misc import color_marker_generator
+
+
+def color_marker_generator(n, cm='jet'):
+    """
+    Returns a generator with as many colors as possible, combined with shapes for plotting with matplotlib. Using
+    standard colormaps, this generator can yield up to 6144 unique color/shape combinations.
+    :param n: how many different values have to be generated
+    :param cm: color map (from matplotlib.cm) to be used as color range.
+    :return: a color and a shape. It first iterates over the colors, then the shapes.
+    """
+    colors = plt.cm.get_cmap('jet')
+    shapes = ',.ov^v<>12348sp*hH+xdD|_'
+    n = min(n, colors.N * len(shapes))
+    mark_iter = np.round(np.linspace(0, colors.N * len(shapes), n)).astype('int')
+    for i in range(n):
+        yield colors(mark_iter[i] / len(shapes)), shapes[mark_iter[i] % len(shapes)]
 
 
 def cluster_area(pts, nnfinder):
