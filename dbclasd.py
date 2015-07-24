@@ -148,17 +148,17 @@ def dbclasd(pts):
                     new_candidate = candidates.pop(0)
                     chisq_0, p_0 = sci_chisquare(new_clust_dists)
                     new_clust_idxs = np.r_[new_clust_idxs, new_candidate]
-                    new_clust_dists = np.r_[new_clust_dists, two_nnfinder.kneighbors(pts[new_candidate])[0][:, 1]]
-                    chisq_1, p_1 = sci_chisquare(new_clust_dists)
-                    # A chi-square test us usually controlled through the alpha or p-value. Here we can say we accept
-                    # the null-hypothesis if the p-value doesn't grow w.r.t. the previous one. The problem with this
-                    # test is that it doesn't change too much by adding just one point to the sample.
-                    if np.round(p_0, 5) <= np.round(p_1, 5):
+                    new_dist = two_nnfinder.kneighbors(pts[new_candidate])[0][:, 1]
+                    chisq_1, p_1 = sci_chisquare(new_dist, f_exp=new_clust_dists.mean())
+
+                    # Merging candidates is going to be controlled by thresholding the chi-square values instead of
+                    # the p-values just as one of the figures in the original paper suggests.
+                    if chisq_0 >= chisq_1:
                         # Retrieve and update answers once more
                         answer_idxs = []
                         for clust_pt_idx in new_clust_idxs:
                             query_nn_dists, query_nn_idxs = nnfinder.kneighbors([pts[clust_pt_idx]])
-                            answer_idxs = query_nn_idxs[query_nn_dists[1:] <= r]  # Discard the input point itself
+                            answer_idxs = query_nn_idxs[query_nn_dists <= r][1:]  # Discard the input point itself
 
                         for c_idx in answer_idxs:
                             if c_idx not in proccessed_pts:
