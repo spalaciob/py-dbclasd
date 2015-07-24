@@ -130,9 +130,8 @@ def dbclasd(pts):
             two_clust_nnfinder = NearestNeighbors(2, algorithm='ball_tree', p=2).fit(pts[new_clust_idxs])
             r = two_clust_nnfinder.kneighbors(pts[new_clust_idxs])[0][:, 1].max()  # Max NN distance of cluster points
             for clust_pt_idx in new_clust_idxs:
-                query_nn_dists, query_nn_idxs = nnfinder.kneighbors([pts[clust_pt_idx]])
+                query_nn_dists, query_nn_idxs = nnfinder.kneighbors([pts[clust_pt_idx]], n_neighbors=len(pts))
                 answer_idxs = query_nn_idxs[query_nn_dists <= r][1:]  # Discard the input point itself
-                # answer_idxs = retrieve_neighborhood_simple(pts, new_clust_idxs, nnfinder, clust_pt_idx)
 
                 # Update candidates
                 for c_idx in answer_idxs:
@@ -157,8 +156,8 @@ def dbclasd(pts):
                         # Retrieve and update answers once more
                         answer_idxs = []
                         for clust_pt_idx in new_clust_idxs:
-                            query_nn_dists, query_nn_idxs = nnfinder.kneighbors([pts[clust_pt_idx]])
-                            answer_idxs = query_nn_idxs[query_nn_dists[1:] <= r]  # Discard the input point itself
+                            query_nn_dists, query_nn_idxs = nnfinder.kneighbors([pts[clust_pt_idx]], n_neighbors=len(pts))
+                            answer_idxs = query_nn_idxs[query_nn_dists <= r][1:]  # Discard the input point itself
 
                         for c_idx in answer_idxs:
                             if c_idx not in proccessed_pts:
