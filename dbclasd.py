@@ -34,27 +34,36 @@ def color_marker_generator(n, cm='jet'):
         yield colors(mark_iter[i] / len(shapes)), shapes[mark_iter[i] % len(shapes)]
 
 
-def distribution_test(pts, pt, nnfinder):
+def is_distribution_stable(pts, pt, nnfinder):
     """
     Perform a chi-square test on pts and compare the results to pts with pt added to it.
+    If the second test stays below the first one, the distribution hasn't changed.
     """
+    add_pt = True
+    pt_idx = None
+
     area, gl, whole_grid = cluster_area(pts, nnfinder)
-    grid = whole_grid[whole_grid >= 1]
+    grid = whole_grid[whole_grid >= 1]  # Assume they are connected (they are, at least diagonally)
+    grid_bins = np.unique(grid)
     lambda_hat = grid.mean()
-    p_est = poisson.pmf(np.unique(grid), lambda_hat)
-    p_est[-1] = 1-p_est[:-1].sum()
-    chisq, p = sci_chisquare(np.histogram(grid.flatten(), bins=range(1, int(grid.max())+2))[0]/grid.sum(), f_exp=p_est)
+    p_est = poisson.pmf(grid_bins, lambda_hat)
+    p_est[-1] = 1-p_est[:-1].sum()  # This last probability has to be expressed as P(x >= p_n) instead of P(x == p_n)
+    chisq, p = sci_chisquare([grid[grid == i].sum() for i in grid_bins]/grid.sum(), f_exp=p_est, ddof=grid_bins.size-2)
 
-    area2, gl2, whole_grid2 = cluster_area(np.vstack((pts, pt)), nnfinder)
+    if add_pt:
+        area2, gl2, whole_grid2 = cluster_area(np.vstack((pts, pt)), nnfinder)
+    else:
+        area2, gl2, whole_grid2 = cluster_area(np.r_[pts[:pt_idx], pts[pt_idx+1:]], nnfinder)
     grid2 = whole_grid2[whole_grid2 >= 1]
+    grid2_bins = np.unique(grid2)
     lambda_hat2 = grid2.mean()
-    p_est2 = poisson.pmf(np.unique(grid2), lambda_hat2)
-    p_est2[-1] = 1-p_est2[:-1].sum()
-    chisq_2, p_2 = sci_chisquare(np.histogram(grid2.flatten(), bins=range(1, int(grid2.max())+2))[0]/grid2.sum(), f_exp=p_est2)
+    p_est2 = poisson.pmf(grid2_bins, lambda_hat2)
+    p_est2[-1] = 1-p_est2[:-1].sum()  # Same as before
+    chisq_2, p_2 = sci_chisquare([grid2[grid2 == i].sum() for i in grid2_bins]/grid2.sum(), f_exp=p_est2, ddof=grid2_bins.size-2)
 
-    print chisq, chisq_2
+    # print '%f (%.3f) ¿>=? %f (%.3f)' % (chisq, p, chisq_2, p_2)
     
-    return chisq <= chisq_2
+    return p >= p_2
 
 
 def cluster_area(pts, nnfinder):
@@ -146,7 +155,8 @@ def dbclasd(pts):
     nnfinder = NearestNeighbors(30, algorithm='ball_tree', p=2).fit(pts)
     two_nnfinder = NearestNeighbors(2, algorithm='ball_tree', p=2).fit(pts)
     for pt_idx, pt in enumerate(pts):
-        if pt_idx not in assigned_cands:
+        if assigned_cands[pt_idx] == -1:
+            candidates = []
             new_clust_idxs = nnfinder.kneighbors([pt])[1].flatten()  # It includes pt_idx already. shape = (1, size)
             new_clust_dists = two_nnfinder.kneighbors(pts[new_clust_idxs])[0][:, 1]  # All 1-NNs distances in cluster
 
@@ -169,27 +179,26 @@ def dbclasd(pts):
                 change = False
                 while len(candidates) > 0:
                     new_candidate = candidates.pop(0)
-                    chisq_0, p_0 = sci_chisquare(new_clust_dists)
-                    new_clust_idxs = np.r_[new_clust_idxs, new_candidate]
-                    new_clust_dists = np.r_[new_clust_dists, two_nnfinder.kneighbors(pts[new_candidate])[0][:, 1]]
-                    chisq_1, p_1 = sci_chisquare(new_clust_dists)
-                    # A chi-square test us usually controlled through the alpha or p-value. Here we can say we accept
-                    # the null-hypothesis if the p-value doesn't grow w.r.t. the previous one. The problem with this
-                    # test is that it doesn't change too much by adding just one point to the sample.
-                    if np.round(p_0, 5) <= np.round(p_1, 5):
-                        # Retrieve and update answers once more
+                    # Evaluate only points that weren't chosen by the first k-nn expansion
+                    # if new_candidate in new_clust_idxs:
+                    #     continue
+
+                    if is_distribution_stable(pts[new_clust_idxs], pts[new_candidate], nnfinder):
+                        # Insert into the cluster
+                        new_clust_idxs = np.r_[new_clust_idxs, new_candidate]
+                        new_clust_dists = np.r_[new_clust_dists, two_nnfinder.kneighbors(pts[new_candidate])[0][:, 1]]
+                        # Retrieve
                         answer_idxs = []
                         for clust_pt_idx in new_clust_idxs:
                             query_nn_dists, query_nn_idxs = nnfinder.kneighbors([pts[clust_pt_idx]], n_neighbors=len(pts))
-                            answer_idxs = query_nn_idxs[query_nn_dists <= r][1:]  # Discard the input point itself
-
+                            answer_idxs = query_nn_idxs[query_nn_dists <= r][1:] # Discard the input point itself
+                        # Update
                         for c_idx in answer_idxs:
                             if c_idx not in proccessed_pts:
                                 candidates.append(c_idx)
                                 proccessed_pts.append(c_idx)
                         change = True
                     else:
-                        print 'Distribution change: %.5f > %.5f' % (p_0, p_1)
                         unsuccessful_cands.append(new_candidate)
                 candidates = unsuccessful_cands[:]
                 unsuccessful_cands = []
