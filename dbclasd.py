@@ -15,6 +15,7 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import chisquare as sci_chisquare
 from matplotlib import pyplot as plt
+from scipy.stats import poisson
 
 
 def color_marker_generator(n, cm='jet'):
@@ -33,6 +34,29 @@ def color_marker_generator(n, cm='jet'):
         yield colors(mark_iter[i] / len(shapes)), shapes[mark_iter[i] % len(shapes)]
 
 
+def distribution_test(pts, pt, nnfinder):
+    """
+    Perform a chi-square test on pts and compare the results to pts with pt added to it.
+    """
+    area, gl, whole_grid = cluster_area(pts, nnfinder)
+    grid = whole_grid[whole_grid >= 1]
+    lambda_hat = grid.mean()
+    p_est = poisson.pmf(np.unique(grid), lambda_hat)
+    p_est[-1] = 1-p_est[:-1].sum()
+    chisq, p = sci_chisquare(np.histogram(grid.flatten(), bins=range(1, int(grid.max())+2))[0]/grid.sum(), f_exp=p_est)
+
+    area2, gl2, whole_grid2 = cluster_area(np.vstack((pts, pt)), nnfinder)
+    grid2 = whole_grid2[whole_grid2 >= 1]
+    lambda_hat2 = grid2.mean()
+    p_est2 = poisson.pmf(np.unique(grid2), lambda_hat2)
+    p_est2[-1] = 1-p_est2[:-1].sum()
+    chisq_2, p_2 = sci_chisquare(np.histogram(grid2.flatten(), bins=range(1, int(grid2.max())+2))[0]/grid2.sum(), f_exp=p_est2)
+
+    print chisq, chisq_2
+    
+    return chisq <= chisq_2
+
+
 def cluster_area(pts, nnfinder):
     """
     Approximate the area of a set of candidate points belonging to a cluster. This is only necessary to compute the
@@ -41,7 +65,7 @@ def cluster_area(pts, nnfinder):
     :return: area, grid_length (both floating point values)
     """
     nnfinder = NearestNeighbors(2, algorithm='ball_tree', p=2).fit(pts)
-    grid_length = max(nnfinder.kneighbors(pts))
+    grid_length = nnfinder.kneighbors(pts)[0].max()
     # TODO: adjust the offset to fit in one cell the points with the largest distance (=grid_length)
     grid_x_lims = np.arange(np.ceil((pts[:, 0].max() - pts[:, 0].min()) / grid_length) + 1) * grid_length + pts[:, 0].min()
     grid_y_lims = np.arange(np.ceil((pts[:, 1].max() - pts[:, 1].min()) / grid_length) + 1) * grid_length + pts[:, 1].min()
@@ -54,7 +78,7 @@ def cluster_area(pts, nnfinder):
     # for ybin in grid_y_lims:
     #     plt.plot([grid_x_lims[0], grid_x_lims[-1]], [ybin, ybin], 'r--')
 
-    return (grid >= 1).sum() * grid_length, grid_length
+    return (grid >= 1).sum() * grid_length, grid_length, grid
 
 
 def retrieve_neighborhood_area(allpts, cluster_idxs, nnfinder, pt_idx=None):
