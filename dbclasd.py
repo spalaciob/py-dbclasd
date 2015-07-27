@@ -18,6 +18,10 @@ from matplotlib import pyplot as plt
 from scipy.stats import poisson
 
 
+# # For plotting (Debugging)
+# test_cnt = 0
+
+
 def color_marker_generator(n, cm='jet'):
     """
     Returns a generator with as many colors as possible, combined with shapes for plotting with matplotlib. Using
@@ -34,26 +38,29 @@ def color_marker_generator(n, cm='jet'):
         yield colors(mark_iter[i] / len(shapes)), shapes[mark_iter[i] % len(shapes)]
 
 
-def is_distribution_stable(pts, pt, nnfinder):
+def is_distribution_stable(pts, pt, nnfinder, thresh0=None):
     """
     Perform a chi-square test on pts and compare the results to pts with pt added to it.
     If the second test stays below the first one, the distribution hasn't changed.
+    :param pts: NxM 2d-array with N points of M dimensions.
+    :param pt: point to be inserted into pts to test whether adding it, changes the distribution significantly.
+    :param nnfinder: instance of scipy's NearestNeighbor fit with all points in the dataset.
+    :param thresh0: an external fixed threshold to compare against instead of the statistic from pts. This is useful
+    when setting an upper/lower bound for points that are being tested against the same set of reference points.
+    :return: whether the distribution remains stable with respect to the one of pts and the threshold that was used.
     """
-    add_pt = True
-    pt_idx = None
-
-    area, gl, whole_grid = cluster_area(pts, nnfinder)
-    grid = whole_grid[whole_grid >= 1]  # Assume they are connected (they are, at least diagonally)
-    grid_bins = np.unique(grid)
-    lambda_hat = grid.mean()
-    p_est = poisson.pmf(grid_bins, lambda_hat)
-    p_est[-1] = 1-p_est[:-1].sum()  # This last probability has to be expressed as P(x >= p_n) instead of P(x == p_n)
-    chisq, p = sci_chisquare([grid[grid == i].sum() for i in grid_bins]/grid.sum(), f_exp=p_est, ddof=grid_bins.size-2)
-
-    if add_pt:
-        area2, gl2, whole_grid2 = cluster_area(np.vstack((pts, pt)), nnfinder)
+    if thresh0 is None:
+        area, gl, whole_grid = cluster_area(pts, nnfinder)
+        grid = whole_grid[whole_grid >= 1]  # Assume they are connected (they are, at least diagonally)
+        grid_bins = np.unique(grid)
+        lambda_hat = grid.mean()
+        p_est = poisson.pmf(grid_bins, lambda_hat)
+        p_est[-1] = 1-p_est[:-1].sum()  # This last probability has to be expressed as P(x >= p_n) instead of P(x == p_n)
+        chisq, p = sci_chisquare([grid[grid == i].sum() for i in grid_bins]/grid.sum(), f_exp=p_est, ddof=grid_bins.size-2)
     else:
-        area2, gl2, whole_grid2 = cluster_area(np.r_[pts[:pt_idx], pts[pt_idx+1:]], nnfinder)
+        chisq, p = thresh0, -1.
+
+    area2, gl2, whole_grid2 = cluster_area(np.vstack((pts, pt)), nnfinder)
     grid2 = whole_grid2[whole_grid2 >= 1]
     grid2_bins = np.unique(grid2)
     lambda_hat2 = grid2.mean()
@@ -61,9 +68,23 @@ def is_distribution_stable(pts, pt, nnfinder):
     p_est2[-1] = 1-p_est2[:-1].sum()  # Same as before
     chisq_2, p_2 = sci_chisquare([grid2[grid2 == i].sum() for i in grid2_bins]/grid2.sum(), f_exp=p_est2, ddof=grid2_bins.size-2)
 
-    # print '%f (%.3f) ¿>=? %f (%.3f)' % (chisq, p, chisq_2, p_2)
-    
-    return p >= p_2
+    # # Plot chi-square fittness (Debugging)
+    # global test_cnt
+    # plt.plot(np.array([-0.5, 0.5])+test_cnt, [chisq]*2, c='b', marker='_', lw=5)
+    # if chisq > chisq_2:
+    #     color = 'g'
+    # elif chisq == chisq_2:
+    #     color = 'k'
+    # else:
+    #     color = 'r'
+    # plt.scatter(test_cnt, chisq_2, c=color, marker='x')
+    # test_cnt += 1
+
+    if thresh0 is None:
+        new_thresh = chisq
+    else:
+        new_thresh = thresh0
+    return chisq >= chisq_2, new_thresh
 
 
 def cluster_area(pts, nnfinder):
@@ -71,7 +92,8 @@ def cluster_area(pts, nnfinder):
     Approximate the area of a set of candidate points belonging to a cluster. This is only necessary to compute the
     lower bound for the radius of "retrieve_heighborhood".
     :param pts: NxM 2d-array with N points of M dimensions.
-    :return: area, grid_length (both floating point values)
+    :param nnfinder: instance of scipy's NearestNeighbor fit with all points in the dataset.
+    :return: area, grid_length (both floating point values), grid histogram (how many points per cell)
     """
     nnfinder = NearestNeighbors(2, algorithm='ball_tree', p=2).fit(pts)
     grid_length = nnfinder.kneighbors(pts)[0].max()
@@ -80,7 +102,7 @@ def cluster_area(pts, nnfinder):
     grid_y_lims = np.arange(np.ceil((pts[:, 1].max() - pts[:, 1].min()) / grid_length) + 1) * grid_length + pts[:, 1].min()
     grid = np.histogram2d(pts[:, 0], pts[:, 1], bins=[grid_x_lims, grid_y_lims])[0]
 
-    # # Plot grid (Take it out afterwards)
+    # # Plot grid for the area estimation (Debugging)
     # plt.scatter(pts[:, 0], pts[:, 1], c='b')
     # for xbin in grid_x_lims:
     #     plt.plot([xbin, xbin], [grid_y_lims[0], grid_y_lims[-1]], 'g--')
@@ -92,6 +114,7 @@ def cluster_area(pts, nnfinder):
 
 def retrieve_neighborhood_area(allpts, cluster_idxs, nnfinder, pt_idx=None):
     """
+    DEPRECATED
     Retrieve candidates to expand a given cluster. The radius is set to the largest 1-NN distance within all cluster
     points. The area is only computed to guarantee that the condition has been met.
     :param allpts: NxM 2d-array with N points of M dimensions. These are all points in the dataset.
@@ -123,6 +146,7 @@ def retrieve_neighborhood_area(allpts, cluster_idxs, nnfinder, pt_idx=None):
 
 def retrieve_neighborhood_simple(allpts, cluster_idxs, nnfinder, pt_idx=None):
     """
+    DEPRECATED
     Retrieve candidates to expand a given cluster. The radius is set to the largest 1-NN distance within all cluster
     points. This method omits the lower bound check and follows directly the definition for the radius.
     :param allpts: NxM 2d-array with N points of M dimensions. These are all points in the dataset.
@@ -149,7 +173,6 @@ def dbclasd(pts):
     :return: 1d-array with labels for each point in pts.
     """
     assigned_cands = np.zeros(len(pts)) - 1
-    candidates = []  # Candidates
     unsuccessful_cands = []
     proccessed_pts = []
     nnfinder = NearestNeighbors(30, algorithm='ball_tree', p=2).fit(pts)
@@ -173,17 +196,23 @@ def dbclasd(pts):
                         candidates.append(c_idx)
                         proccessed_pts.append(c_idx)
 
-            # Expand Cluster
+            # Expand Cluster (if there are candidates and more than half of the 1NN haven't been assigned yet
+            if len(candidates) == 0 or (assigned_cands[new_clust_idxs] == -1).sum() < new_clust_idxs.size/2:
+                continue
+
             change = True
+            thresh0 = None
             while change:
                 change = False
                 while len(candidates) > 0:
                     new_candidate = candidates.pop(0)
-                    # Evaluate only points that weren't chosen by the first k-nn expansion
-                    # if new_candidate in new_clust_idxs:
-                    #     continue
-
-                    if is_distribution_stable(pts[new_clust_idxs], pts[new_candidate], nnfinder):
+                    is_stable, new_thresh = is_distribution_stable(pts[new_clust_idxs],
+                                                                   pts[new_candidate],
+                                                                   nnfinder,
+                                                                   thresh0)
+                    if thresh0 is None or (new_thresh > thresh0 and is_stable):
+                        thresh0 = new_thresh
+                    if is_stable:
                         # Insert into the cluster
                         new_clust_idxs = np.r_[new_clust_idxs, new_candidate]
                         new_clust_dists = np.r_[new_clust_dists, two_nnfinder.kneighbors(pts[new_candidate])[0][:, 1]]
@@ -203,6 +232,11 @@ def dbclasd(pts):
                 candidates = unsuccessful_cands[:]
                 unsuccessful_cands = []
             assigned_cands[new_clust_idxs] = pt_idx
+
+            # # Plot chi-square fittness and partial labeling. Plotting in is_distribution_stable has to be enabled
+            # plt.show()
+            # plot_labels(pts, assigned_cands)
+
     return assigned_cands
 
 
@@ -230,18 +264,30 @@ def load_data(fpath):
     return syn_data
 
 
-def main(opts):
-    """Main loop loads the data, performs the clustering on that data and plots it (assuming is 2D)"""
-    pts = load_data(opts.infile)
-    labels = dbclasd(pts)
-    colors = color_marker_generator(np.unique(labels).size)
+def plot_labels(pts, labels):
+    """
+    Plot points with different markers according to their labels.
+    :param pts: input points as 2d-array
+    :param labels: labels for pts as 1d-array. All points with the same labels are plotted with the same marker.
+    :return: None
+    """
+    plt.cla()
+    colors = color_marker_generator(np.unique(labels).size, cm='spectral')
     print 'plotting...'
-    for lbl in np.unique(labels):
+    unique_labels = np.unique(labels)
+    # np.random.shuffle(unique_labels)
+    for lbl in np.unique(unique_labels):
         col, shp = colors.next()
         cluster = pts[labels==lbl]
         plt.scatter(cluster[:, 0], cluster[:, 1], c=col, marker=shp)
     plt.show()
 
+
+def main(opts):
+    """Main loop loads the data, performs the clustering on that data and plots it (assuming is 2D)"""
+    pts = load_data(opts.infile)
+    labels = dbclasd(pts)
+    plot_labels(pts, labels)
 
 
 if __name__ == "__main__":
