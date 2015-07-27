@@ -8,6 +8,7 @@ DESCRIPTION: Python implementation of the DBCLASD algorithm: a non-parametric cl
 """
 
 import sys
+import time
 import argparse
 import traceback
 import numpy as np
@@ -280,7 +281,11 @@ def plot_labels(pts, labels):
         col, shp = colors.next()
         cluster = pts[labels==lbl]
         plt.scatter(cluster[:, 0], cluster[:, 1], c=col, marker=shp)
-    plt.show()
+
+    oname = 'dbclasd_'+str(time.time())+'.png'
+    plt.savefig(oname)
+    print 'Plot saved to %s' % oname
+    # plt.show()
 
 
 def main(opts):
@@ -293,7 +298,7 @@ def main(opts):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', metavar='FILE', dest='infile', required=False, default=None, help='Input file')
+    parser.add_argument('-i', '--input', metavar='FILE', dest='infile', required=True, default=None, help='Input file')
 
     opts = parser.parse_args(sys.argv[1:])
 

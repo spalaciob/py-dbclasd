@@ -36,8 +36,8 @@ data (which was publicly available at http://cs.joensuu.fi/sipu/datasets/ ). Now
 
 $ python dbclasd.py -i Aggregation2d.txt
 
-This should load the data and perform the clustering on it. At the end, a plot of all classes is displayed. Make sure
-matplotlib is properly configured as the plot is not being saved to disk.
+This should load the data and perform the clustering on it. At the end, a plot of all classes is saved to the current
+directory. Make sure matplotlib is properly configured and you have enough permissions to save in '.'
 
 
 References:
