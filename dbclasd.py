@@ -127,8 +127,7 @@ def dbclasd(pts):
             new_clust_dists = two_nnfinder.kneighbors(pts[new_clust_idxs])[0][:, 1]  # All 1-NNs distances in cluster
 
             # Retrieve Neighborhood
-            two_clust_nnfinder = NearestNeighbors(2, algorithm='ball_tree', p=2).fit(pts[new_clust_idxs])
-            r = two_clust_nnfinder.kneighbors(pts[new_clust_idxs])[0][:, 1].max()  # Max NN distance of cluster points
+            r = new_clust_dists.max()  # Max NN distance of cluster points
             for clust_pt_idx in new_clust_idxs:
                 query_nn_dists, query_nn_idxs = nnfinder.kneighbors([pts[clust_pt_idx]], n_neighbors=len(pts))
                 answer_idxs = query_nn_idxs[query_nn_dists <= r][1:]  # Discard the input point itself
