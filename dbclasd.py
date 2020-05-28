@@ -216,7 +216,7 @@ def dbclasd(pts):
                     if is_stable:
                         # Insert into the cluster
                         new_clust_idxs = np.r_[new_clust_idxs, new_candidate]
-                        new_clust_dists = np.r_[new_clust_dists, two_nnfinder.kneighbors(pts[new_candidate])[0][:, 1]]
+                        new_clust_dists = np.r_[new_clust_dists, two_nnfinder.kneighbors(pts[new_candidate].reshape(1, -1))[0][:, 1]]
                         # Retrieve
                         answer_idxs = []
                         for clust_pt_idx in new_clust_idxs:
